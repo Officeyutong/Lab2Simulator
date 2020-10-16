@@ -1,0 +1,251 @@
+<html>
+
+<head>
+    <title>Lab2模拟器</title>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.6.9/vue.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.js"></script>
+
+    <link href="https://cdn.bootcdn.net/ajax/libs/semantic-ui/2.4.1/semantic.css" rel="stylesheet">
+    <script src="https://cdn.bootcdn.net/ajax/libs/semantic-ui/2.4.1/semantic.js"></script>
+    <script>
+        let vue;
+        const shift = /^SHIFT (?<hand>(LH)|(RH)) TO THE (?<dir>L|R)$/;
+        const move = /^MOVE (?<hand>(LH)|(RH)) TO POSITION (?<num>([0-9]+)|(LHPos)|(RHPos)|(LHCard)|(RHCard))$/;
+        const jump = /^JUMP TO LINE (?<num>([0-9]+)|(LHPos)|(RHPos)|(LHCard)|(RHCard))$/;
+        const jumpCond = /^JUMP TO LINE (?<num>([0-9]+)|(LHPos)|(RHPos)|(LHCard)|(RHCard)) IF (?<opt1>([0-9]+)|(LHPos)|(RHPos)|(LHCard)|(RHCard)) (?<cond>(eq)|(ne)|(lt)|(gt)) (?<opt2>([0-9]+)|(LHPos)|(RHPos)|(LHCard)|(RHCard))$/;
+        const stopR = /^STOP$/;
+        const swap = /^SWAP$/;
+
+        const exprs = [shift, move, jump, jumpCond, stopR, swap];
+        $(document).ready(() => {
+            vue = new Vue({
+                el: "#main",
+                data: {
+                    leftIndex: 0,
+                    rightIndex: 1,
+                    cards: [],
+                    running: false,
+                    commands: [],
+                    string: "",
+                    cardCount: 8,
+                    codeIndex: 0,
+                    error: "",
+                    success: "",
+                    token: -1
+                },
+                methods: {
+                    stop() {
+                        clearInterval(this.token);
+                        this.running = false;
+                    },
+                    parse() {
+                        this.error = "";
+                        this.success = "";
+                        let cards = [];
+                        for (let item of this.string.split("\n")) {
+                            item = item.trim();
+                            if (item && !item.startsWith("#")) {
+
+                                let tested = false;
+                                for (let x of exprs) {
+                                    if (x.test(item)) {
+                                        tested = true;
+                                        break;
+                                    }
+                                }
+                                if (!tested) {
+                                    this.error = "Bad statement: " + item;
+                                    break;
+                                }
+                                cards.push(item);
+                            }
+                        }
+                        this.commands = cards;
+                        this.success = `加载了 ${cards.length} 条有效语句`
+                    },
+                    jumpTo(index) {
+                        console.log("jump to ", index);
+                        this.codeIndex = index;
+
+                    },
+                    execute(stmt) {
+                        console.log(stmt);
+                        if (shift.test(stmt)) {
+                            let groups = shift.exec(stmt).groups;
+                            let val = { L: -1, R: 1 }[groups.dir];
+                            console.log(val);
+                            if (groups.hand == "LH") {
+                                this.leftIndex += val;
+                            } else {
+                                this.rightIndex += val;
+                            }
+                            // this.codeIndex++;
+                            this.jumpTo(this.codeIndex + 1);
+                        } else if (move.test(stmt)) {
+                            let groups = move.exec(stmt).groups;
+                            let val = this.loadNumber(groups.num);
+                            if (groups.hand == "LH") {
+                                this.leftIndex = val;
+                            } else {
+                                this.rightIndex = val;
+                            }
+                            this.jumpTo(this.codeIndex + 1);
+                        } else if (jump.test(stmt)) {
+                            let groups = jump.exec(stmt).groups;
+                            this.jumpTo(this.loadNumber(groups.num) - 1);
+                        } else if (jumpCond.test(stmt)) {
+                            let groups = jumpCond.exec(stmt).groups;
+                            let togo = this.loadNumber(groups.num) - 1;
+                            let opt1 = this.loadNumber(groups.opt1);
+                            let opt2 = this.loadNumber(groups.opt2);
+                            let cond = groups.cond;
+                            let ok = false;
+                            if (cond == "eq") ok = (opt1 == opt2);
+                            else if (cond == "ne") ok = (opt1 != opt2);
+                            else if (cond == "lt") ok = (opt1 < opt2);
+                            else if (cond == "gt") ok = (opt1 > opt2);
+                            if (ok) {
+                                this.jumpTo(togo);
+                            } else {
+                                this.jumpTo(this.codeIndex + 1);
+                            }
+                        } else if (stopR.test(stmt)) {
+                            this.stop();
+                        } else if (swap.test(stmt)) {
+
+                        }
+                    },
+
+                    init() {
+                        this.leftIndex = 0;
+                        this.rightIndex = 1;
+                        let curr = [];
+
+                        for (let i = 0; i < this.cardCount; i++) {
+                            curr.push(parseInt(Math.random() * 12) + 1);
+                        }
+                        this.cards = curr;
+                    },
+                    loadNumber(val) {
+                        if (val == "LHPos") return this.leftIndex;
+                        else if (val == "RHPos") return this.rightIndex;
+                        else if (val == "LHCard") return this.cards[this.leftIndex];
+                        else if (val == "RHCard") return this.cards[this.rightIndex];
+                        else return parseInt(val);
+
+                    },
+                    toggleState() {
+                        if (!this.running) {
+                            this.codeIndex = 0;
+                            this.token = setInterval(() => {
+                                this.execute(this.commands[this.codeIndex]);
+                            }, 500);
+                            this.running = true;
+                        } else {
+                            this.stop();
+                        }
+                    }
+                }, mounted() {
+                    this.init();
+                }
+            });
+        });
+    </script>
+</head>
+
+<body style="background-color: rgb(236, 233, 233)">
+    <div id="main" style="margin-top: 10%;">
+        <div class="ui header">
+            <h1>Lab2 模拟器</h1>
+        </div>
+        <div class="ui main container">
+            <div class="ui segment stacked">
+                <table class="ui center aligned celled table">
+                    <thead>
+                        <tr>
+                            <th v-for="item,i in cards">
+                                {{i}}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td v-for="item,i in cards" v-bind:style="{
+                            ['background-color']:((i==leftIndex)?'green':null)
+                        }">
+                                <div v-if="i==leftIndex">左手</div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th v-for="item in cards" style="font-size: 300%">
+                                {{item}}</th>
+                        </tr>
+
+                        <tr>
+                            <td v-for="item,i in cards" v-bind:style="{
+                                ['background-color']:((i==rightIndex)?'red':null)
+                        }">
+                                <div v-if="i==rightIndex">右手</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="ui stacked segment">
+                <div class="ui error message" v-if="error">
+                    <p>{{error}}</p>
+                </div>
+                <div class="ui success message" v-if="success">
+                    <p>{{success}}</p>
+                </div>
+
+                <div class="ui form">
+                    <div class="ui fields">
+                        <div class="ui field">
+                            <label>状态</label>
+                            <div class="ui green label" v-if="running">
+                                运行中
+                            </div>
+                            <div class="ui red label" v-if="!running">
+                                已停止
+                            </div>
+
+                        </div>
+                        <div class="ui field">
+                            <label>左手指针</label>
+                            <input type="text" v-model.number="leftIndex">
+                        </div>
+                        <div class="ui field">
+                            <label>右手指针</label>
+                            <input type="text" v-model.number="rightIndex">
+                        </div>
+                        <div class="ui field">
+                            <label>语句</label>
+                            <input type="text" v-model.number="codeIndex">
+                        </div>
+                    </div>
+                    <div class="ui field">
+                        <label>代码</label>
+                        <textarea v-model="string"></textarea>
+                    </div>
+
+                    <div class="ui green button" v-on:click="toggleState">
+                        {{running?"停止":"运行"}}
+                    </div>
+                    <div class="ui green button" v-if="!running" v-on:click="init">
+                        重置
+                    </div>
+
+                    <div class="ui green button" v-if="!running" v-on:click="parse">
+                        解析
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
