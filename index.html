@@ -130,7 +130,7 @@
                         let curr = [];
 
                         for (let i = 0; i < this.cardCount; i++) {
-                            curr.push(parseInt(Math.random() * 12) + 1);
+                            curr.push(parseInt(Math.random() * 12 + 0.5) + 1);
                         }
                         this.cards = curr;
                     },
