@@ -222,6 +222,11 @@
 
                         </div>
                         <div class="ui field">
+                            <label>卡牌数量</label>
+                            <input type="text" v-model.number="cardCount">
+                        </div>
+                        
+                        <div class="ui field">
                             <label>左手指针</label>
                             <input type="text" v-model.number="leftIndex">
                         </div>
@@ -237,6 +242,7 @@
                             <label>执行间隔(ms)</label>
                             <input type="text" v-model.number="interval">
                         </div>
+
 
                     </div>
                     <div class="ui field">
