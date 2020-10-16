@@ -115,7 +115,12 @@
                         } else if (stopR.test(stmt)) {
                             this.stop();
                         } else if (swap.test(stmt)) {
-
+                            let leftVal = this.cards[this.leftIndex];
+                            let rightVal = this.cards[this.rightIndex];
+                            console.log(leftVal, rightVal);
+                            this.$set(this.cards, this.leftIndex, rightVal);
+                            this.$set(this.cards, this.rightIndex, leftVal);
+                            this.jumpTo(this.codeIndex + 1);
                         }
                     },
 
@@ -232,7 +237,7 @@
                             <label>执行间隔(ms)</label>
                             <input type="text" v-model.number="interval">
                         </div>
-                        
+
                     </div>
                     <div class="ui field">
                         <label>代码</label>
